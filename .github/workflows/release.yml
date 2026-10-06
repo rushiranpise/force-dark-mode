@@ -71,7 +71,7 @@ jobs:
           if [ -f release.keystore ]; then
             export KEYSTORE_PATH="$PWD/release.keystore"
           fi
-          ./build.sh
+          bash ./build.sh
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
