@@ -23,11 +23,22 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
+      # The runner image already ships the Android SDK (ANDROID_HOME / ANDROID_SDK_ROOT) with
+      # cmdline-tools, so install the two packages this build needs directly. Deliberately not
+      # using android-actions/setup-android: it runs `sdkmanager tools`, and that package was
+      # removed from the SDK repository, so the action fails before the build even starts.
       - name: Install build-tools and platform
-        run: sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
+        run: |
+          set -e
+          SDK="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          SDKMGR="$(command -v sdkmanager || true)"
+          if [ -z "$SDKMGR" ]; then
+            SDKMGR="$(ls "$SDK"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | head -1)"
+          fi
+          echo "sdkmanager: $SDKMGR"
+          yes | "$SDKMGR" --licenses >/dev/null 2>&1 || true
+          "$SDKMGR" --install "platforms;android-36" "build-tools;36.0.0"
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
 
       - name: Download Xposed API
         run: |
