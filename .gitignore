@@ -1,0 +1,13 @@
+# build output
+build/
+*.apk
+*.apk.idsig
+
+# signing material
+debug.keystore
+release.keystore
+release-keystore.properties
+api-82.jar
+
+# other agents' worktrees in the same folder
+.kilo/

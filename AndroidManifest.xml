@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="dev.rushiranpise.forcedarkmode">
+
+    <uses-sdk
+        android:minSdkVersion="24"
+        android:targetSdkVersion="34" />
+
+    <application android:label="@string/app_name">
+
+        <meta-data
+            android:name="xposedmodule"
+            android:value="true" />
+
+        <meta-data
+            android:name="xposeddescription"
+            android:value="Forces dark rendering in the apps you scope, no matter what they support." />
+
+        <meta-data
+            android:name="xposedminversion"
+            android:value="93" />
+
+        <!--
+            No xposedscope on purpose: there is no sensible default set of apps. Pick the apps you
+            want dark in LSPosed -> Modules -> Force Dark Mode -> scope.
+        -->
+
+    </application>
+
+</manifest>

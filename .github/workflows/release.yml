@@ -1,0 +1,89 @@
+name: Build
+
+on:
+  push:
+    branches: [main, master]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install build-tools and platform
+        run: sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Download Xposed API
+        run: |
+          set -e
+          primary="https://maven.aliyun.com/repository/public/de/robv/android/xposed/api/82/api-82.jar"
+          fallback="http://maven.wafour.com:8081/artifactory/libs-release/de/robv/android/xposed/api/82/api-82.jar"
+          curl -fsSL -o api-82.jar "$primary" || curl -fsSL -o api-82.jar "$fallback"
+          ls -l api-82.jar
+
+      - name: Prepare signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "${KEYSTORE_BASE64:-}" ]; then
+            printf '%s' "$KEYSTORE_BASE64" | base64 -d > release.keystore
+            echo "release keystore ready"
+          else
+            echo "no KEYSTORE_BASE64 secret - the release APK will be debug signed"
+          fi
+
+      - name: Build debug and release APKs
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -e
+          export ANDROID_HOME="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          export XPOSED_JAR="$PWD/api-82.jar"
+          if [ -f release.keystore ]; then
+            export KEYSTORE_PATH="$PWD/release.keystore"
+          fi
+          ./build.sh
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: force-dark-mode-debug
+          path: force-dark-mode-debug.apk
+
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: force-dark-mode-release
+          path: force-dark-mode-release.apk
+
+      - name: Create release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -e
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --generate-notes \
+            force-dark-mode-debug.apk force-dark-mode-release.apk \
+            || gh release upload "$TAG" --clobber \
+                 force-dark-mode-debug.apk force-dark-mode-release.apk
